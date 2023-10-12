@@ -580,6 +580,14 @@ sub QobuzArtist {
 			my $favorites = shift;
 			my $artistId = $artist->{id};
 			my $isFavorite = ($favorites && $favorites->{artists}) ? grep { $_->{id} eq $artistId } @{$favorites->{artists}->{items}} : 0;
+			my $i = 0;
+			my $fromFavorites = 0;
+			while ( (my @stackDetails = (caller($i++))) ){
+				if ($stackDetails[3] eq "Plugins::Qobuz::Plugin::QobuzUserFavorites") {
+					$fromFavorites = 1;
+					last;
+				}
+			}
 
 			push @$items, {
  				name => cstring($client, $isFavorite ? 'PLUGIN_QOBUZ_REMOVE_FAVORITE' : 'PLUGIN_QOBUZ_ADD_FAVORITE', $artist->{name}),
@@ -588,7 +596,7 @@ sub QobuzArtist {
 				passthrough => [{
 					artist_ids => $artist->{id},
 				}],
-				nextWindow => 'parent'
+				nextWindow => $fromFavorites ? 'parent' : 'refresh'
 			};
 
 			$cb->({
@@ -1258,6 +1266,14 @@ sub QobuzGetTracks {
 		Plugins::Qobuz::API->getUserFavorites(sub {
 			my $favorites = shift;
 			my $isFavorite = ($favorites && $favorites->{albums}) ? grep { $_->{id} eq $albumId } @{$favorites->{albums}->{items}} : 0;
+			my $i = 0;
+			my $fromFavorites = 0;
+			while ( (my @stackDetails = (caller($i++))) ){
+				if ($stackDetails[3] eq "Plugins::Qobuz::Plugin::QobuzUserFavorites") {
+					$fromFavorites = 1;
+					last;
+				}
+			}
 
 			push @$items, {
 				name => cstring($client, $isFavorite ? 'PLUGIN_QOBUZ_REMOVE_FAVORITE' : 'PLUGIN_QOBUZ_ADD_FAVORITE', $album->{title}),
@@ -1266,7 +1282,7 @@ sub QobuzGetTracks {
 				passthrough => [{
 					album_ids => $albumId
 				}],
-				nextWindow => 'parent'
+				nextWindow => $fromFavorites ? 'parent' : 'refresh'
 			};
 
 			push @$items,{
