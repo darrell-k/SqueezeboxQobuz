@@ -1157,6 +1157,7 @@ sub _playlistCallback {
 # 	}
 # }
 
+
 sub QobuzGetTracks {
 	my ($client, $cb, $params, $args) = @_;
 	my $albumId = $args->{album_id};
@@ -1715,6 +1716,13 @@ sub _albumItem {
 		album_id => $album->{id},
 		album_title => $album->{title},
 	}];
+	my $dbAlbum = Slim::Schema->first('Album', { extid => 'qobuz:album://' . $album->{id} });
+	if ($dbAlbum) {
+		$item->{album_id} = $dbAlbum->id;
+	}
+	else {
+		$item->{remote_album_id} = 'qobuz:' . $album->{id};
+	}
 
 	return $item;
 }

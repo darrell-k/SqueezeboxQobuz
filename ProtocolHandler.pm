@@ -394,6 +394,25 @@ sub getMetadataFor {
 	return $meta;
 }
 
+sub getTrackUrls {
+	my ($class, $client, $albumId) = @_;
+
+	my @items;
+
+	my $api = Plugins::Qobuz::Plugin::getAPIHandler($client);
+
+	$api->getAlbum(sub {
+		my $album = shift;
+
+		if ($album) {
+			foreach my $track (@{$album->{tracks}->{items}}) {
+				push @items, Plugins::Qobuz::API::Common->getUrl(undef, $track);
+			}
+		}
+	}, $albumId);
+	return @items;
+}
+
 sub getIcon {
 	my ($class, $url) = @_;
 
