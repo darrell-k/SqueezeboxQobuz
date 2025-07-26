@@ -946,7 +946,7 @@ sub QobuzUserFavorites {
 		for my $artist ( sort {
 			Slim::Utils::Text::ignoreCaseArticles($a->{name}) cmp Slim::Utils::Text::ignoreCaseArticles($b->{name})
 		} @{$favorites->{artists}->{items}} ) {
-			push @artists,  _artistItem($client, $artist, 'withIcon');
+			push @artists,  _artistItem($client, $artist, 'withIcon', 1 );
 		}
 
 		push @$items, {
@@ -954,13 +954,15 @@ sub QobuzUserFavorites {
 			items => \@artists,
 			image => 'html/images/artists.png',
 		} if @artists;
+		
+		my $sortFavsAlphabetically = $prefs->get('sortFavsAlphabetically') || 0;
 
 		my @albums;
 		for my $album ( @{$favorites->{albums}->{items}} ) {
-			push @albums, _albumItem($client, $album);
+			my $item = _albumItem($client, $album);
+			$item->{textkey} = substr( Slim::Utils::Text::ignoreCaseArticles($item->{name}), 0, 1 ) if $sortFavsAlphabetically;
+			push @albums, $item;
 		}
-
-		my $sortFavsAlphabetically = $prefs->get('sortFavsAlphabetically') || 0;
 
 		push @$items, {
 			name => cstring($client, 'PLUGIN_QOBUZ_RELEASES'),
@@ -1693,7 +1695,8 @@ sub _albumItem {
 
 	if ($albumName) {
 		$item->{line1} = $albumName;
-		$item->{line2} = $artist . ($albumYear ? ' (' . $albumYear . ')' : '');
+		$item->{line2} = ( join(', ', map { $_->{name} } Plugins::Qobuz::API::Common->getMainArtists($album)) || $artist )
+				. ($albumYear ? ' (' . $albumYear . ')' : '');
 		$item->{name} .= $albumYear ? "\n(" . $albumYear . ')' : '';
 	}
 
@@ -1728,7 +1731,7 @@ sub _albumItem {
 }
 
 sub _artistItem {
-	my ($client, $artist, $withIcon) = @_;
+	my ($client, $artist, $withIcon, $sorted) = @_;
 
 	my $item = {
 		hasMetadata => 'artist',
@@ -1740,6 +1743,7 @@ sub _artistItem {
 	};
 
 	$item->{image} = $artist->{picture} || getAPIHandler($client)->getArtistPicture($artist->{id}) || 'html/images/artists.png' if $withIcon;
+	$item->{textkey} = substr( Slim::Utils::Text::ignoreCaseArticles($item->{name}), 0, 1 ) if $sorted;
 
 	return $item;
 }
@@ -1767,7 +1771,12 @@ sub _trackItem {
 	my ($client, $track, $tags) = @_;
 
 	my $title = Plugins::Qobuz::API::Common->addVersionToTitle($track);
-	my $artist = Plugins::Qobuz::API::Common->getArtistName($track, $track->{album});
+	my $artistNames = [ map { $_->{name} } Plugins::Qobuz::API::Common->getMainArtists($track->{album}) ];
+	Plugins::Qobuz::API::Common->removeArtistsIfNotOnTrack($track, $artistNames);
+	if ($track->{performer} && Plugins::Qobuz::API::Common->trackPerformerIsMainArtist($track) ) {
+		push @$artistNames, $track->{performer}->{name};
+	}
+	my $artist = join(', ', Slim::Utils::Misc::uniq(@$artistNames));
 	my $album  = $track->{album}->{title} || '';
 	if ( $track->{album}->{title} && $prefs->get('showDiscs') ) {
 		$album = Slim::Music::Info::addDiscNumberToAlbumTitle($album,$track->{media_number},$track->{album}->{media_count});
