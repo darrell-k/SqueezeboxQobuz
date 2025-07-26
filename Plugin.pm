@@ -1694,7 +1694,8 @@ sub _albumItem {
 
 	if ($albumName) {
 		$item->{line1} = $albumName;
-		$item->{line2} = $artist . ($albumYear ? ' (' . $albumYear . ')' : '');
+		$item->{line2} = ( join(', ', map { $_->{name} } Plugins::Qobuz::API::Common->getMainArtists($album)) || $artist )
+				. ($albumYear ? ' (' . $albumYear . ')' : '');
 		$item->{name} .= $albumYear ? "\n(" . $albumYear . ')' : '';
 	}
 
@@ -1762,7 +1763,12 @@ sub _trackItem {
 	my ($client, $track, $tags) = @_;
 
 	my $title = Plugins::Qobuz::API::Common->addVersionToTitle($track);
-	my $artist = Plugins::Qobuz::API::Common->getArtistName($track, $track->{album});
+	my $artistNames = [ map { $_->{name} } Plugins::Qobuz::API::Common->getMainArtists($track->{album}) ];
+	Plugins::Qobuz::API::Common->removeArtistsIfNotOnTrack($track, $artistNames);
+	if ($track->{performer} && Plugins::Qobuz::API::Common->trackPerformerIsMainArtist($track) ) {
+		push @$artistNames, $track->{performer}->{name};
+	}
+	my $artist = join(', ', Slim::Utils::Misc::uniq(@$artistNames));
 	my $album  = $track->{album}->{title} || '';
 	if ( $track->{album}->{title} && $prefs->get('showDiscs') ) {
 		$album = Slim::Music::Info::addDiscNumberToAlbumTitle($album,$track->{media_number},$track->{album}->{media_count});
