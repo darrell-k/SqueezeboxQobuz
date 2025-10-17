@@ -249,13 +249,17 @@ sub precacheTrack {
 		push @$artistNames, $track->{performer}->{name};
 		push @$artistIds, $track->{performer}->{id};
 	}
+	my %seen;
+	my $artist = join(',', grep { !$seen{$_}++ } @$artistNames);
+	%seen = undef;
+	my $artistId = join(',', grep { !$seen{$_}++ } @$artistIds);
 
 	my $meta = {
 		title    => $track->{title} || $track->{id},
 		album    => $album->{title} || '',
 		albumId  => $album->{id},
-		artist   => $artistNames->[0],
-		artistId => $artistIds->[0],
+		artist   => $artist,
+		artistId => $artistId,
 		composer => $track->{composer}->{name} || '',
 		composerId => $track->{composer}->{id} || '',
 		performers => $track->{performers} || '',

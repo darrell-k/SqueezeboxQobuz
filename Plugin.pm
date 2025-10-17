@@ -531,6 +531,13 @@ sub browseArtistMenu {
 	my ($client, $cb, $params, $args) = @_;
 
 	my $artistId = $params->{artist_id} || $args->{artist_id};
+
+       # Qobuz artist id passed, go straight to Qobuz
+	if ( defined($artistId) && $artistId < 0 ) {
+		($args->{artistId}) = $artistId * -1;
+		return QobuzArtist($client, $cb, $params, $args);
+	}
+
 	if ( defined($artistId) && $artistId =~ /^\d+$/ && (my $artistObj = Slim::Schema->resultset("Contributor")->find($artistId))) {
 		if (my ($extId) = grep /qobuz:artist:(\d+)/, @{$artistObj->extIds}) {
 			($args->{artistId}) = $extId =~ /qobuz:artist:(\d+)/;
@@ -1678,6 +1685,7 @@ sub _albumItem {
 		artist      => $album->{artist}->{name},
 		genre       => $album->{genre},
 		year        => $album->{year} || substr($album->{release_date_stream},0,4) || 0,
+		remoteAlbumId    => $album->{id},
 	};
 
 	if ( $album->{hires_streamable} && $albumName !~ /hi.?res|bits|khz/i && $prefs->get('labelHiResAlbums') && Plugins::Qobuz::API::Common->getStreamingFormat($album) eq 'flac' ) {

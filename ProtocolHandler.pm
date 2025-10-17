@@ -15,6 +15,7 @@ use Slim::Utils::Strings qw(string cstring);
 use Plugins::Qobuz::API;
 use Plugins::Qobuz::API::Common;
 use Plugins::Qobuz::Reporting;
+use Plugins::Qobuz::Importer;
 
 use constant MP3_BITRATE => 320_000;
 use constant CAN_FLAC_SEEK => (Slim::Utils::Versions->compareVersions($::VERSION, '8.0.0') >= 0 && UNIVERSAL::can('Slim::Utils::Scanner::Remote', 'parseFlacHeader'));
@@ -290,7 +291,64 @@ sub parseDirectHeaders {
 	Plugins::Qobuz::Reporting->startStreaming($client);
 
 	# title, bitrate, metaint, redir, type, length, body
-	return (undef, $bitrate, 0, undef, $contentType, $length, undef);
+	return ($meta->{title}, $bitrate, 0, undef, $contentType, $length, undef);
+}
+
+sub getAlbumTracks {
+	my ( $class, $cb, $client, $albumId ) = @_;
+	my $album;
+	my $results;
+	my $resultOrder;
+	my $total;
+
+	my $api = Plugins::Qobuz::Plugin::getAPIHandler($client);
+	$api->getAlbum(sub {
+		$album = shift;
+		my $albumArtists = {
+			required => 0,
+			ids      => undef,
+			names    => undef,
+		};
+		my $attributes = [map { Plugins::Qobuz::Importer::_prepareTrack($album, $_, $albumArtists) } @{ $album->{tracks}->{items} }];
+		Plugins::Qobuz::Importer::_checkAlbumArtists($attributes, $albumArtists);
+		foreach (@$attributes) {
+			my $trackid = $_->{EXTID};
+			$trackid =~ s/\D//g;
+			my @artistIds;
+			my @composerIds;
+			push @artistIds, ref $_->{ARTIST_EXTID} ? @{$_->{ARTIST_EXTID}} : $_->{ARTIST_EXTID};
+			push @composerIds, ref $_->{COMPOSER_EXTID} ? @{$_->{COMPOSER_EXTID}} : $_->{COMPOSER_EXTID};
+			@artistIds = map { my $e = $_; $e =~ s/\D//g; $e * -1 } @artistIds;
+			map { s/\D//g * -1 } @composerIds;
+			push @$resultOrder, $_->{TRACKNUM};
+			$results->{$_->{TRACKNUM}} = {
+#				    "albums.compilation"  => 0,
+				    "artist"              => join(',', @{$_->{ARTIST}}),
+				    "artist_ids"          => join(',', @artistIds),
+				    "composer"            => join(',', @{$_->{COMPOSER}}),
+				    "composer_ids"        => join(',', @composerIds),
+#				    "contributors.id"     => $_->,
+#				    "genre_ids"           => $_->"502,503,504",
+				    "genres"              => $_->{GENRE},
+#				    "tracks.disc"         => 2,
+#				    "tracks.discsubtitle" => "",
+				    "tracks.extid"        => $_->{EXTID},
+#				    "tracks.grouping"     => "",
+				    "tracks.id"           => $trackid * -1,
+#				    "tracks.performance"  => "",
+				    "tracks.secs"         => $_->{SECS},
+#				    "tracks.subtitle"     => undef,
+				    "tracks.title"        => $_->{TITLE},
+				    "tracks.tracknum"     => $_->{TRACKNUM},
+				    "tracks.url"          => $_->{url},
+				    "tracks.year"         => $_->{YEAR},
+#				    "works.id"            => 6683,
+				    "works.title"         => $_->{WORK},
+			}
+		};
+		$total = scalar @$resultOrder;
+		$cb->($results, $resultOrder, $total);
+	}, $albumId);
 }
 
 sub getMetadataFor {
