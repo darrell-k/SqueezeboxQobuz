@@ -321,28 +321,29 @@ sub getAlbumTracks {
 			@artistIds = map { my $e = $_; $e =~ s/\D//g; $e * -1 } @artistIds;
 			map { s/\D//g * -1 } @composerIds;
 			push @$resultOrder, $_->{TRACKNUM};
+# Commented out attributes to remind me of what we return for a database track.
 			$results->{$_->{TRACKNUM}} = {
-#				    "albums.compilation"  => 0,
+#				    "albums.compilation"  => ,
 				    "artist"              => join(',', @{$_->{ARTIST}}),
 				    "artist_ids"          => join(',', @artistIds),
 				    "composer"            => join(',', @{$_->{COMPOSER}}),
 				    "composer_ids"        => join(',', @composerIds),
-#				    "contributors.id"     => $_->,
-#				    "genre_ids"           => $_->"502,503,504",
+#				    "contributors.id"     => ,
+#				    "genre_ids"           => ,
 				    "genres"              => $_->{GENRE},
-#				    "tracks.disc"         => 2,
-#				    "tracks.discsubtitle" => "",
+#				    "tracks.disc"         => ,
+#				    "tracks.discsubtitle" => ,
 				    "tracks.extid"        => $_->{EXTID},
-#				    "tracks.grouping"     => "",
+#				    "tracks.grouping"     => ,
 				    "tracks.id"           => $trackid * -1,
-#				    "tracks.performance"  => "",
+#				    "tracks.performance"  => ,
 				    "tracks.secs"         => $_->{SECS},
-#				    "tracks.subtitle"     => undef,
+#				    "tracks.subtitle"     => ,
 				    "tracks.title"        => $_->{TITLE},
 				    "tracks.tracknum"     => $_->{TRACKNUM},
 				    "tracks.url"          => $_->{url},
 				    "tracks.year"         => $_->{YEAR},
-#				    "works.id"            => 6683,
+#				    "works.id"            => ,
 				    "works.title"         => $_->{WORK},
 			}
 		};
