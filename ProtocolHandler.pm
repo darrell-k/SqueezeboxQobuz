@@ -145,7 +145,8 @@ sub explodePlaylist {
 		}, $id);
 	}
 	else {
-		$cb->([$url])
+		# using split to handle multiple track urls, in which case we must pass separate array elements to the callback.
+		$cb->([split(',', $url)])
 	}
 }
 
